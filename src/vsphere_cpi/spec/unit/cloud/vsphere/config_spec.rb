@@ -555,6 +555,34 @@ module VSphereCloud
       end
     end
 
+    describe '#use_paravirtual_scsi' do
+      context 'when use_paravirtual_scsi is not set' do
+        it 'defaults to true' do
+          expect(config.use_paravirtual_scsi).to eq(true)
+        end
+      end
+
+      context 'when use_paravirtual_scsi is explicitly set to true' do
+        before do
+          config_hash['vcenters'][0]['use_paravirtual_scsi'] = true
+        end
+
+        it 'returns true' do
+          expect(config.use_paravirtual_scsi).to eq(true)
+        end
+      end
+
+      context 'when use_paravirtual_scsi is set to false' do
+        before do
+          config_hash['vcenters'][0]['use_paravirtual_scsi'] = false
+        end
+
+        it 'returns false' do
+          expect(config.use_paravirtual_scsi).to eq(false)
+        end
+      end
+    end
+
     describe '#datacenter_name' do
       it 'returns the datacenter name' do
         expect(config.datacenter_name).to eq datacenter_name

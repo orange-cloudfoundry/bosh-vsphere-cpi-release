@@ -20,7 +20,8 @@ module VSphereCloud
                    stemcell:,
                    tagging_tagger:,
                    upgrade_hw_version:,
-                   default_hw_version:)
+                   default_hw_version:,
+                   use_paravirtual_scsi: true)
       @agent_env_client = agent_env_client
       @additional_agent_env = additional_agent_env
       @client = client
@@ -36,6 +37,7 @@ module VSphereCloud
       @tagging_tagger = tagging_tagger
       @upgrade_hw_version = upgrade_hw_version
       @default_hw_version = default_hw_version
+      @use_paravirtual_scsi = use_paravirtual_scsi
     end
 
     def create(vm_config)
@@ -88,10 +90,13 @@ module VSphereCloud
           config_spec = VimSdk::Vim::Vm::ConfigSpec.new(vm_config.config_spec_params)
           config_spec.device_change = []
 
-          paravirtual_scsi_controller_spec = replicated_stemcell_vm.create_paravirtual_scsi_controller_spec
-          raise 'Failed to create device change to paravirtual controller' if paravirtual_scsi_controller_spec.nil?
-          scsi_controller_device_change_spec = Resources::VM.create_edit_device_spec(paravirtual_scsi_controller_spec)
-          config_spec.device_change << scsi_controller_device_change_spec
+          # Optionally change SCSI controller to Paravirtual (for more disk capacity)
+          if @use_paravirtual_scsi
+            paravirtual_scsi_controller_spec = replicated_stemcell_vm.create_paravirtual_scsi_controller_spec
+            raise 'Failed to create device change to paravirtual controller' if paravirtual_scsi_controller_spec.nil?
+            scsi_controller_device_change_spec = Resources::VM.create_edit_device_spec(paravirtual_scsi_controller_spec)
+            config_spec.device_change << scsi_controller_device_change_spec
+          end
 
           ephemeral_disk = Resources::EphemeralDisk.new(
             size_in_mb: vm_config.ephemeral_disk_size,
