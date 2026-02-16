@@ -238,6 +238,11 @@ module VSphereCloud
       vcenter['default_hw_version']
     end
 
+    def use_paravirtual_scsi
+      # Default to true to maintain current behavior, but allow override
+      vcenter.fetch('use_paravirtual_scsi', true)
+    end
+
     def nsxt
       return nil unless nsxt_enabled?
       NSXTConfig.new(

@@ -399,6 +399,7 @@ module VSphereCloud
             stemcell: Stemcell.new(stemcell_cid),
             upgrade_hw_version: @config.upgrade_hw_version,
             default_hw_version: @config.default_hw_version,
+            use_paravirtual_scsi: @config.use_paravirtual_scsi,
             pbm: @pbm,
           )
           created_vm = vm_creator.create(vm_config)

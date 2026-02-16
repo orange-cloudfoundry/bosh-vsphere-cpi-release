@@ -526,18 +526,58 @@ module VSphereCloud
       end
 
       context 'paravirtual SCSI controller' do
-        it "changes default SCSI controller to paravirtual SCSI controller to allow more disks to be attached" do
-          expect(client).to receive(:wait_for_task).and_yield
+        context 'when use_paravirtual_scsi is true (default)' do
+          it "changes default SCSI controller to paravirtual SCSI controller to allow more disks to be attached" do
+            expect(client).to receive(:wait_for_task).and_yield
 
-          expect(cpi).to receive(:clone_vm) do |_vm, _name, _folder, _resource_pool, options|
-            expect(options[:config].device_change).to include(have_attributes(
-                                                                class: VimSdk::Vim::Vm::Device::VirtualDeviceSpec,
-                                                                device: paravirtual_controller_device,
-                                                                operation: VimSdk::Vim::Vm::Device::VirtualDeviceSpec::Operation::EDIT
-                                                              ))
-            cloned_vm_mob
+            expect(cpi).to receive(:clone_vm) do |_vm, _name, _folder, _resource_pool, options|
+              expect(options[:config].device_change).to include(have_attributes(
+                                                                  class: VimSdk::Vim::Vm::Device::VirtualDeviceSpec,
+                                                                  device: paravirtual_controller_device,
+                                                                  operation: VimSdk::Vim::Vm::Device::VirtualDeviceSpec::Operation::EDIT
+                                                                ))
+              cloned_vm_mob
+            end
+            subject.create(vm_config)
           end
-          subject.create(vm_config)
+        end
+
+        context 'when use_paravirtual_scsi is false' do
+          let(:subject_with_disabled_paravirtual) do
+            VmCreator.new(
+              client: client,
+              cloud_searcher: cloud_searcher,
+              cpi: cpi,
+              datacenter: datacenter,
+              agent_env_client: agent_env,
+              additional_agent_env: config['agent'],
+              tagging_tagger: tagging_tagger,
+              ip_conflict_detector: IPConflictDetector.new(client, datacenter),
+              ensure_no_ip_conflicts: config['vcenter']['ensure_no_ip_conflicts'],
+              default_disk_type: default_disk_type,
+              enable_auto_anti_affinity_drs_rules: config['vcenter']['enable_auto_anti_affinity_drs_rules'],
+              stemcell: Stemcell.new(stemcell_cid),
+              upgrade_hw_version: upgrade_hw_version,
+              default_hw_version: default_hw_version,
+              use_paravirtual_scsi: false,
+              pbm: pbm,
+            )
+          end
+
+          it "keeps the original SCSI controller (LSI Logic) without modification" do
+            expect(client).to receive(:wait_for_task).and_yield
+
+            expect(cpi).to receive(:clone_vm) do |_vm, _name, _folder, _resource_pool, options|
+              # Should NOT include paravirtual controller change
+              paravirtual_device_changes = options[:config].device_change.select do |change|
+                change.device == paravirtual_controller_device &&
+                  change.operation == VimSdk::Vim::Vm::Device::VirtualDeviceSpec::Operation::EDIT
+              end
+              expect(paravirtual_device_changes).to be_empty
+              cloned_vm_mob
+            end
+            subject_with_disabled_paravirtual.create(vm_config)
+          end
         end
       end
 
